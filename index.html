@@ -1,407 +1,48 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#142d51">
-  <title>AsistePY | Control de asistencia</title>
-  <style>
-    :root { --azul:#315edc; --oscuro:#142d51; --texto:#1d2c42; --gris:#69788c; --borde:#e2e8f2; --fondo:#f5f7fc; --verde:#137b55; --naranja:#ac551c; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--fondo); color:var(--texto); font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif; }
-    button,input,select { font:inherit; }
-    button { cursor:pointer; }
-    button:disabled { opacity:.48; cursor:not-allowed; }
-    button:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid #8baafc; outline-offset:2px; }
-    .oculto { display:none!important; }
-    .marca { display:flex; align-items:center; gap:12px; font-weight:800; font-size:23px; letter-spacing:-.7px; }
-    .marca img { width:45px; height:45px; }
-    .portada { min-height:100vh; display:grid; place-items:center; padding:24px; background:linear-gradient(120deg,#142d51ef,#2759a7d9),url('./fondo.svg') center/cover; }
-    .inicio { width:min(100%,550px); border-radius:22px; padding:clamp(25px,5vw,44px); background:white; box-shadow:0 30px 70px #091c3f40; }
-    h1 { font-size:clamp(29px,5vw,38px); line-height:1.15; margin:30px 0 12px; letter-spacing:-1.1px; }
-    h2 { font-size:22px; margin:0 0 7px; }
-    h3 { font-size:17px; margin:0 0 12px; }
-    p { color:var(--gris); line-height:1.55; margin:8px 0 0; }
-    .opciones { display:grid; gap:14px; margin-top:30px; }
-    .opcion { text-align:left; display:flex; justify-content:space-between; align-items:center; gap:14px; width:100%; border:1px solid var(--borde); border-radius:15px; background:#fff; padding:19px; color:var(--texto); }
-    .opcion:hover { border-color:#91acf1; background:#f4f7ff; }
-    .opcion strong { display:block; font-size:17px; }
-    .opcion small { display:block; color:var(--gris); margin-top:5px; font-size:13px; }
-    .flecha { color:var(--azul); font-size:23px; }
-    .nota { font-size:12px; margin-top:23px; }
-    .barra { background:var(--oscuro); color:white; padding:16px max(20px,calc((100vw - 1000px)/2)); }
-    .barra .marca { font-size:21px; }
-    .barra .marca img { width:38px; height:38px; }
-    .contenedor { width:min(100% - 36px,1000px); margin:30px auto 65px; }
-    .volver { border:0; background:transparent; color:var(--azul); padding:0; font-weight:750; margin-bottom:22px; }
-    .tarjeta { background:white; border:1px solid var(--borde); border-radius:17px; padding:clamp(19px,3vw,28px); box-shadow:0 5px 24px #15336007; }
-    .compacta { max-width:465px; margin:0 auto; }
-    label { display:block; font-size:13px; font-weight:700; margin:18px 0 7px; }
-    input:not([type=file]),select { width:100%; padding:12px; border:1px solid #d6deea; background:white; border-radius:10px; color:var(--texto); }
-    .boton { border:0; padding:12px 19px; border-radius:10px; font-weight:750; background:var(--azul); color:white; }
-    .boton.secundario { color:var(--oscuro); background:#eaf0fa; }
-    .boton.borde { color:var(--oscuro); border:1px solid var(--borde); background:#fff; }
-    .boton.ancho { width:100%; margin-top:19px; }
-    .ayuda { background:#f1f5fc; color:#4f627e; border-radius:10px; padding:12px; margin-top:18px; font-size:13px; line-height:1.6; }
-    .error { color:#ba2b44; min-height:19px; font-size:13px; margin-top:10px; }
-    .cabecera { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
-    .cabecera p { margin-top:4px; }
-    .perfil { display:flex; gap:17px; align-items:center; margin:20px 0; }
-    .avatar { width:76px; height:76px; flex-shrink:0; border-radius:50%; object-fit:cover; background:#e9f0ff; border:2px solid #e6ebf6; }
-    .avatar.mini { width:42px; height:42px; }
-    .perfil strong { display:block; font-size:19px; }
-    .perfil span { display:block; color:var(--gris); font-size:13px; margin-top:5px; }
-    .acciones { display:flex; flex-wrap:wrap; gap:11px; margin-top:20px; }
-    .estado { background:#edf5ff; color:#31547e; border-radius:11px; padding:15px; margin-top:15px; font-size:14px; line-height:1.6; }
-    .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin:17px 0; }
-    .stat { padding:20px; border-radius:14px; border:1px solid var(--borde); background:white; }
-    .stat b { font-size:29px; display:block; margin:7px 0 0; }
-    .stat span { font-size:13px; color:var(--gris); }
-    .seccion { margin-top:19px; }
-    .filtros { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin:16px 0; }
-    .filtros label { margin-top:0; }
-    .tabla { overflow-x:auto; margin-top:17px; }
-    table { border-collapse:collapse; width:100%; min-width:640px; font-size:13px; }
-    th,td { text-align:left; padding:12px 10px; border-bottom:1px solid var(--borde); vertical-align:middle; }
-    th { font-size:12px; color:var(--gris); }
-    td .persona { display:flex; align-items:center; gap:9px; white-space:nowrap; }
-    .etiqueta { display:inline-block; background:#e8f7ee; color:var(--verde); padding:5px 9px; border-radius:18px; font-weight:750; font-size:11px; }
-    .etiqueta.tarde { background:#fff0e4; color:var(--naranja); }
-    .vacio { text-align:center; padding:20px; color:var(--gris); }
-    .fila-perfil { display:flex; align-items:center; gap:14px; border-top:1px solid var(--borde); padding:17px 0; flex-wrap:wrap; }
-    .fila-perfil .datos { flex:1; min-width:145px; }
-    .fila-perfil .datos strong { display:block; }
-    .fila-perfil .datos small { color:var(--gris); }
-    .fila-perfil input[type=file] { width:min(100%,230px); font-size:12px; }
-    .pie { font-size:12px; text-align:center; margin-top:35px; }
-    @media(max-width:650px) { .stats { grid-template-columns:1fr; } .filtros { grid-template-columns:1fr; } .contenedor { margin-top:23px; } .fila-perfil { align-items:flex-start; } }
-    @media print { .barra,.volver,.no-imprimir,#pantallaInicio,#pantallaAsistencia,#accesoAdmin,#listaPerfiles,.pie { display:none!important; } .contenedor { width:100%; margin:0; } .tarjeta { border:0; padding:0; box-shadow:none; } #panelAdmin { display:block!important; } .stats { display:flex; } .tabla { overflow:visible; } }
-  </style>
-</head>
-<body>
-  <main id="pantallaInicio" class="portada">
-    <div class="inicio">
-      <div class="marca"><img src="./logo.svg" alt="Logo AsistePY"> AsistePY</div>
-      <h1>Control de asistencia</h1>
-      <p>Elegí cómo querés ingresar al sistema.</p>
-      <div class="opciones">
-        <button id="irAsistencia" class="opcion" type="button"><span><strong>Marcar asistencia</strong><small>Registrar entrada y salida con tu usuario</small></span><span class="flecha">→</span></button>
-        <button id="irAdmin" class="opcion" type="button"><span><strong>Panel de administrador</strong><small>Reportes por fecha y fotos de empleados</small></span><span class="flecha">→</span></button>
-      </div>
-    </div>
-  </main>
-
-  <section id="pantallaAsistencia" class="oculto">
-    <header class="barra"><div class="marca"><img src="./logo.svg" alt=""> AsistePY</div></header>
-    <div class="contenedor">
-      <button class="volver no-imprimir" type="button" data-inicio>← Volver al inicio</button>
-      <div id="accesoEmpleado" class="tarjeta compacta">
-        <h2>Marcar asistencia</h2>
-        <p>Ingresá con tu usuario de empleado.</p>
-        <form id="formEmpleado">
-          <label for="usuarioEmpleado">Usuario</label>
-          <select id="usuarioEmpleado">
-            <option value="cajero">cajero — Camila Duarte</option>
-            <option value="asistente">asistente — Tomás Rojas</option>
-            <option value="gerente">gerente — Lucía González</option>
-          </select>
-          <label for="claveEmpleado">Contraseña</label>
-          <input id="claveEmpleado" type="password" autocomplete="off" required>
-          <div id="errorEmpleado" class="error" role="alert"></div>
-          <button class="boton ancho" type="submit">Ingresar</button>
-        </form>
-        <div class="ayuda">Usuarios de prueba: cajero, asistente y gerente. Contraseña de todos: <strong>1234</strong>.</div>
-      </div>
-      <div id="zonaEmpleado" class="tarjeta compacta oculto">
-        <div class="cabecera"><h2>Mi asistencia</h2><button id="salirEmpleado" type="button" class="boton borde no-imprimir">Cerrar sesión</button></div>
-        <div class="perfil"><img id="fotoEmpleado" class="avatar" src="./logo.svg" alt="Foto del empleado"><div><strong id="nombreEmpleado"></strong><span id="rolEmpleado"></span></div></div>
-        <p id="fechaEmpleado"></p>
-        <div id="estadoEmpleado" class="estado" role="status"></div>
-        <div class="acciones">
-          <button id="btnEntrada" type="button" class="boton">Marcar entrada</button>
-          <button id="btnSalida" type="button" class="boton secundario">Marcar salida</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="pantallaAdmin" class="oculto">
-    <header class="barra"><div class="marca"><img src="./logo.svg" alt=""> AsistePY</div></header>
-    <div class="contenedor">
-      <button class="volver no-imprimir" type="button" data-inicio>← Volver al inicio</button>
-      <div id="accesoAdmin" class="tarjeta compacta">
-        <h2>Panel de administrador</h2>
-        <p>Acceso exclusivo para el gerente.</p>
-        <form id="formAdmin">
-          <label for="usuarioAdmin">Usuario</label>
-          <input id="usuarioAdmin" type="text" value="gerente" required autocomplete="username">
-          <label for="claveAdmin">Contraseña</label>
-          <input id="claveAdmin" type="password" required autocomplete="off">
-          <div id="errorAdmin" class="error" role="alert"></div>
-          <button class="boton ancho" type="submit">Entrar al panel</button>
-        </form>
-        <div class="ayuda">Acceso de prueba: <strong>gerente / 1234</strong>.</div>
-      </div>
-
-      <div id="panelAdmin" class="oculto">
-        <div class="cabecera">
-          <div><h2>Panel de administrador</h2><p>Informes y perfiles de los empleados</p></div>
-          <button id="salirAdmin" type="button" class="boton borde no-imprimir">Cerrar sesión</button>
-        </div>
-        <div class="stats">
-          <div class="stat"><span>Registros</span><b id="totalRegistros">0</b></div>
-          <div class="stat"><span>A tiempo</span><b id="totalPuntuales">0</b></div>
-          <div class="stat"><span>Llegadas tardías</span><b id="totalTardios">0</b></div>
-        </div>
-        <section class="tarjeta seccion">
-          <h3>Informes de asistencia</h3>
-          <p>Filtrá las asistencias por fecha y empleado.</p>
-          <div class="filtros no-imprimir">
-            <div><label for="desde">Desde</label><input id="desde" type="date"></div>
-            <div><label for="hasta">Hasta</label><input id="hasta" type="date"></div>
-            <div><label for="empleadoFiltro">Empleado</label><select id="empleadoFiltro"><option value="todos">Todos</option><option value="cajero">Camila Duarte</option><option value="asistente">Tomás Rojas</option><option value="gerente">Lucía González</option></select></div>
-          </div>
-          <div class="acciones no-imprimir">
-            <button id="btnCSV" class="boton" type="button">Descargar CSV</button>
-            <button id="btnImprimir" class="boton secundario" type="button">Imprimir</button>
-            <button id="btnEjemplos" class="boton borde" type="button">Cargar ejemplos</button>
-          </div>
-          <div class="tabla"><table>
-            <thead><tr><th>Fecha</th><th>Empleado</th><th>Rol</th><th>Entrada</th><th>Salida</th><th>Tardanza</th><th>Estado</th></tr></thead>
-            <tbody id="tablaReportes"></tbody>
-          </table><p id="mensajeVacio" class="vacio oculto">No hay registros para este filtro.</p></div>
-        </section>
-        <section id="listaPerfiles" class="tarjeta seccion no-imprimir">
-          <h3>Fotos de perfil</h3>
-          <p>Seleccioná una imagen para cada usuario. Se guardará únicamente en este navegador.</p>
-          <div id="perfiles"></div>
-        </section>
-        <p class="pie">AsistePY · Demostración académica · Datos locales del navegador</p>
-      </div>
-    </div>
-  </section>
-  <script>
-    'use strict';
-    // Credenciales visibles en el código: solo para una demostración académica.
-    const usuarios = {
-      cajero: {nombre:'Camila Duarte', rol:'Cajero', horario:'08:00', clave:'1234'},
-      asistente: {nombre:'Tomás Rojas', rol:'Asistente', horario:'08:30', clave:'1234'},
-      gerente: {nombre:'Lucía González', rol:'Gerente', horario:'09:00', clave:'1234'}
-    };
-    const CLAVE_ASISTENCIAS = 'asistepy_asistencias_v1';
-    const CLAVE_FOTOS = 'asistepy_fotos_v1';
-    const $ = id => document.getElementById(id);
-    let asistencias = JSON.parse(localStorage.getItem(CLAVE_ASISTENCIAS) || '[]');
-    let fotos = JSON.parse(localStorage.getItem(CLAVE_FOTOS) || '{}');
-    let empleadoActivo = null;
-    let adminActivo = false;
-
-    function fechaLocal(fecha) {
-      const f = fecha || new Date();
-      return f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0');
-    }
-    function horaLocal() {
-      const f = new Date();
-      return String(f.getHours()).padStart(2,'0') + ':' + String(f.getMinutes()).padStart(2,'0');
-    }
-    function minutos(hora) {
-      const partes = hora.split(':').map(Number);
-      return partes[0]*60 + partes[1];
-    }
-    function tardanza(registro) {
-      return Math.max(0, minutos(registro.entrada) - minutos(usuarios[registro.usuario].horario));
-    }
-    function fechaBonita(fecha) { return fecha.split('-').reverse().join('/'); }
-    function fotoDe(usuario) { return fotos[usuario] || './logo.svg'; }
-    function guardarAsistencias() { localStorage.setItem(CLAVE_ASISTENCIAS, JSON.stringify(asistencias)); }
-    function mostrarPantalla(nombre) {
-      $('pantallaInicio').classList.toggle('oculto', nombre !== 'inicio');
-      $('pantallaAsistencia').classList.toggle('oculto', nombre !== 'asistencia');
-      $('pantallaAdmin').classList.toggle('oculto', nombre !== 'admin');
-      window.scrollTo(0,0);
-    }
-    function cerrarSesiones() {
-      empleadoActivo = null; adminActivo = false;
-      $('zonaEmpleado').classList.add('oculto');
-      $('accesoEmpleado').classList.remove('oculto');
-      $('panelAdmin').classList.add('oculto');
-      $('accesoAdmin').classList.remove('oculto');
-      $('claveEmpleado').value = ''; $('claveAdmin').value = '';
-      $('errorEmpleado').textContent = ''; $('errorAdmin').textContent = '';
-    }
-    $('irAsistencia').addEventListener('click', () => { cerrarSesiones(); mostrarPantalla('asistencia'); });
-    $('irAdmin').addEventListener('click', () => { cerrarSesiones(); mostrarPantalla('admin'); });
-    document.querySelectorAll('[data-inicio]').forEach(b => b.addEventListener('click', () => { cerrarSesiones(); mostrarPantalla('inicio'); }));
-    $('salirEmpleado').addEventListener('click', () => { cerrarSesiones(); mostrarPantalla('inicio'); });
-    $('salirAdmin').addEventListener('click', () => { cerrarSesiones(); mostrarPantalla('inicio'); });
-
-    $('formEmpleado').addEventListener('submit', e => {
-      e.preventDefault();
-      const id = $('usuarioEmpleado').value;
-      if ($('claveEmpleado').value !== usuarios[id].clave) {
-        $('errorEmpleado').textContent = 'Contraseña incorrecta.';
-        return;
-      }
-      empleadoActivo = id;
-      $('accesoEmpleado').classList.add('oculto');
-      $('zonaEmpleado').classList.remove('oculto');
-      $('nombreEmpleado').textContent = usuarios[id].nombre;
-      $('rolEmpleado').textContent = usuarios[id].rol + ' · Horario: ' + usuarios[id].horario;
-      $('fotoEmpleado').src = fotoDe(id);
-      $('fechaEmpleado').textContent = new Date().toLocaleDateString('es-PY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-      pintarAsistencia();
-    });
-    function registroDeHoy() {
-      return asistencias.find(a => a.usuario === empleadoActivo && a.fecha === fechaLocal());
-    }
-    function pintarAsistencia() {
-      const registro = registroDeHoy();
-      $('btnEntrada').disabled = !!registro;
-      $('btnSalida').disabled = !registro || !!registro.salida;
-      $('estadoEmpleado').textContent = !registro
-        ? 'Todavía no registraste tu entrada de hoy.'
-        : 'Entrada: ' + registro.entrada + ' · Salida: ' + (registro.salida || 'Pendiente') + ' · Tardanza: ' + tardanza(registro) + ' minuto(s).';
-    }
-    $('btnEntrada').addEventListener('click', () => {
-      if (!empleadoActivo || registroDeHoy()) return;
-      asistencias.push({usuario:empleadoActivo,fecha:fechaLocal(),entrada:horaLocal(),salida:''});
-      guardarAsistencias(); pintarAsistencia();
-    });
-    $('btnSalida').addEventListener('click', () => {
-      const registro = empleadoActivo && registroDeHoy();
-      if (!registro || registro.salida) return;
-      registro.salida = horaLocal();
-      guardarAsistencias(); pintarAsistencia();
-    });
-
-    $('formAdmin').addEventListener('submit', e => {
-      e.preventDefault();
-      if ($('usuarioAdmin').value.trim().toLowerCase() !== 'gerente' || $('claveAdmin').value !== usuarios.gerente.clave) {
-        $('errorAdmin').textContent = 'Credenciales incorrectas.';
-        return;
-      }
-      adminActivo = true;
-      $('accesoAdmin').classList.add('oculto');
-      $('panelAdmin').classList.remove('oculto');
-      pintarReportes(); pintarPerfiles();
-    });
-    function datosFiltrados() {
-      if (!adminActivo) return [];
-      const desde = $('desde').value;
-      const hasta = $('hasta').value;
-      const quien = $('empleadoFiltro').value;
-      return asistencias.filter(a => usuarios[a.usuario] && (quien === 'todos' || a.usuario === quien) && (!desde || a.fecha >= desde) && (!hasta || a.fecha <= hasta))
-        .sort((a,b) => b.fecha.localeCompare(a.fecha) || a.usuario.localeCompare(b.usuario));
-    }
-    function celda(fila, contenido) {
-      const td = document.createElement('td');
-      td.textContent = String(contenido);
-      fila.append(td);
-      return td;
-    }
-    function pintarReportes() {
-      if (!adminActivo) return;
-      const datos = datosFiltrados();
-      $('totalRegistros').textContent = datos.length;
-      $('totalPuntuales').textContent = datos.filter(a => tardanza(a) === 0).length;
-      $('totalTardios').textContent = datos.filter(a => tardanza(a) > 0).length;
-      $('tablaReportes').replaceChildren();
-      $('mensajeVacio').classList.toggle('oculto',datos.length !== 0);
-      for (const a of datos) {
-        const p = usuarios[a.usuario];
-        const tr = document.createElement('tr');
-        celda(tr,fechaBonita(a.fecha));
-        const tdPersona = celda(tr,'');
-        const persona = document.createElement('div'); persona.className = 'persona';
-        const img = document.createElement('img'); img.className = 'avatar mini'; img.src = fotoDe(a.usuario); img.alt = '';
-        const nombre = document.createElement('span'); nombre.textContent = p.nombre;
-        persona.append(img,nombre); tdPersona.append(persona);
-        celda(tr,p.rol); celda(tr,a.entrada); celda(tr,a.salida || '—');
-        const tarde = tardanza(a);
-        celda(tr,tarde + ' min');
-        const tdEstado = celda(tr,'');
-        const tag = document.createElement('span'); tag.className = 'etiqueta' + (tarde ? ' tarde' : '');
-        tag.textContent = tarde ? 'Tarde' : 'A tiempo'; tdEstado.append(tag);
-        $('tablaReportes').append(tr);
-      }
-    }
-    ['desde','hasta','empleadoFiltro'].forEach(id => $(id).addEventListener('change',pintarReportes));
-    $('btnEjemplos').addEventListener('click', () => {
-      if (!adminActivo) return;
-      const ejemplos = [['cajero',1,'08:12','17:05'],['asistente',1,'08:26','17:30'],['gerente',1,'09:02','18:00'],['cajero',2,'07:56','17:10'],['asistente',2,'08:44','17:24'],['gerente',2,'08:50','18:10']];
-      for (const [usuario,dias,entrada,salida] of ejemplos) {
-        const f = new Date(); f.setDate(f.getDate()-dias);
-        const fecha = fechaLocal(f);
-        if (!asistencias.some(a => a.usuario === usuario && a.fecha === fecha))
-          asistencias.push({usuario,fecha,entrada,salida});
-      }
-      guardarAsistencias(); pintarReportes();
-    });
-    $('btnCSV').addEventListener('click', () => {
-      if (!adminActivo) return;
-      const filas = [['Fecha','Empleado','Rol','Entrada','Salida','Tardanza (min)']];
-      for (const a of datosFiltrados()) {
-        const p = usuarios[a.usuario];
-        filas.push([a.fecha,p.nombre,p.rol,a.entrada,a.salida || '',tardanza(a)]);
-      }
-      const csv = '\uFEFF' + filas.map(f => f.map(v => '"' + String(v).replaceAll('"','""') + '"').join(';')).join('\r\n');
-      const url = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-      const enlace = document.createElement('a'); enlace.href = url; enlace.download = 'informe-asistencia.csv';
-      document.body.append(enlace); enlace.click(); enlace.remove();
-      setTimeout(() => URL.revokeObjectURL(url),500);
-    });
-    $('btnImprimir').addEventListener('click', () => { if(adminActivo) window.print(); });
-
-    function pintarPerfiles() {
-      if (!adminActivo) return;
-      const contenedor = $('perfiles'); contenedor.replaceChildren();
-      for (const id of Object.keys(usuarios)) {
-        const p = usuarios[id];
-        const fila = document.createElement('div'); fila.className='fila-perfil';
-        const foto = document.createElement('img'); foto.className='avatar mini'; foto.src=fotoDe(id); foto.alt='Foto de ' + p.nombre;
-        const datos = document.createElement('div'); datos.className='datos';
-        const nombre = document.createElement('strong'); nombre.textContent=p.nombre;
-        const rol = document.createElement('small'); rol.textContent=p.rol;
-        datos.append(nombre,rol);
-        const input = document.createElement('input'); input.type='file'; input.accept='image/*'; input.setAttribute('aria-label','Cargar foto de ' + p.nombre);
-        input.addEventListener('change', () => { if (input.files[0]) subirFoto(id,input.files[0]); input.value=''; });
-        const eliminar = document.createElement('button'); eliminar.className='boton borde'; eliminar.type='button'; eliminar.textContent='Quitar foto';
-        eliminar.addEventListener('click', () => {
-          if(!adminActivo) return;
-          delete fotos[id];
-          try { localStorage.setItem(CLAVE_FOTOS,JSON.stringify(fotos)); }
-          catch(e) { alert('No se pudo guardar el cambio.'); }
-          pintarPerfiles(); pintarReportes();
-        });
-        fila.append(foto,datos,input,eliminar); contenedor.append(fila);
-      }
-    }
-    function subirFoto(id,archivo) {
-      if (!adminActivo) return;
-      if (!archivo.type.startsWith('image/')) { alert('Seleccioná una imagen.'); return; }
-      if (archivo.size > 5*1024*1024) { alert('Elegí una imagen de hasta 5 MB.'); return; }
-      const url = URL.createObjectURL(archivo);
-      const imagen = new Image();
-      imagen.onload = () => {
-        URL.revokeObjectURL(url);
-        const escala = Math.min(1,240/Math.max(imagen.width,imagen.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1,Math.round(imagen.width*escala));
-        canvas.height = Math.max(1,Math.round(imagen.height*escala));
-        canvas.getContext('2d').drawImage(imagen,0,0,canvas.width,canvas.height);
-        const anterior = fotos[id];
-        fotos[id] = canvas.toDataURL('image/jpeg',.75);
-        try {
-          localStorage.setItem(CLAVE_FOTOS,JSON.stringify(fotos));
-          pintarPerfiles(); pintarReportes();
-        } catch (e) {
-          if(anterior) fotos[id]=anterior; else delete fotos[id];
-          alert('No hay espacio para guardar la imagen en este navegador.');
-        }
-      };
-      imagen.onerror = () => { URL.revokeObjectURL(url); alert('No se pudo abrir esta imagen.'); };
-      imagen.src = url;
-    }
-  </script>
-</body>
-</html>
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AsistePY</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#1b2b44;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:12px 18px;background:#315fda;color:white;font-weight:700}button:disabled{opacity:.5}input,select{width:100%;padding:11px;border:1px solid #d2daea;border-radius:9px;margin:6px 0 14px}label{font-size:13px;font-weight:700}h1{font-size:32px}h2{margin-top:0}p,small{color:#66768c}.hidden{display:none!important}.home{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(120deg,#102949e8,#3262aecc),url('fondo.svg') center/cover}.home .card{max-width:530px;width:100%}.card{background:white;border:1px solid #e0e7f1;border-radius:18px;padding:28px;box-shadow:0 6px 20px #122e4c0c}.brand{display:flex;align-items:center;gap:12px;font-size:23px;font-weight:800}.brand img{width:45px;height:45px}.choice{width:100%;display:block;text-align:left;margin:14px 0;background:#f0f5ff;color:#173a75;padding:22px}.choice:hover{background:#dfeafe}.choice small{display:block;margin-top:4px}.wrap{max-width:1020px;margin:28px auto;padding:0 18px}.top{background:#142c50;color:white;padding:14px 22px}.top img{width:35px;vertical-align:middle;margin-right:9px}.back{margin:0 0 18px;background:#e6edfa;color:#183f81}.narrow{max-width:460px;margin:auto}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.row button{flex-shrink:0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:20px 0}.stat{background:white;padding:20px;border-radius:14px;border:1px solid #e0e7f1}.stat b{font-size:29px;display:block}.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.tablewrap{overflow:auto}table{width:100%;min-width:650px;border-collapse:collapse;font-size:13px}td,th{padding:12px 10px;border-bottom:1px solid #e5ebf3;text-align:left}.avatar{width:55px;height:55px;object-fit:cover;border-radius:50%;background:#ebeff9}.profile{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid #e5ebf3;flex-wrap:wrap}.profile input{width:auto;max-width:250px;margin:0}.error{color:#b52e40;font-size:13px}.notice{padding:13px;border-radius:10px;background:#eef4ff;margin:14px 0}.mt{margin-top:20px}@media(max-width:650px){.filters,.stats{grid-template-columns:1fr}.card{padding:20px}}@media print{.no-print,.top,#profiles{display:none!important}.wrap{max-width:none}.card{border:0}}
+</style></head><body>
+<main id="home" class="home"><div class="card"><div class="brand"><img src="logo.svg" alt="">AsistePY</div><h1>Control de asistencia</h1><p>Elegí una opción para ingresar.</p><button id="goEmployee" class="choice">Marcar asistencia <small>Entrada y salida con tu cuenta</small></button><button id="goAdmin" class="choice">Panel de administrador <small>Reportes y fotos de empleados</small></button><small>Demostración académica · Conexión Supabase</small></div></main>
+<div id="app" class="hidden"><header class="top"><img src="logo.svg" alt="">AsistePY</header><div class="wrap"><button id="back" class="back no-print">← Volver</button>
+<div id="setup" class="card hidden"><h2>Falta configurar Supabase</h2><p>Completá la URL y la clave pública en <code>config.js</code> del repositorio. No pegues una clave secreta.</p></div>
+<div id="login" class="card narrow hidden"><h2 id="loginTitle"></h2><p>Ingresá con el correo y contraseña de Supabase Auth.</p><form id="loginForm"><label>Correo electrónico<input type="email" id="email" required autocomplete="username" placeholder="cajero@asistepy.test"></label><label>Contraseña<input id="password" type="password" required autocomplete="current-password"></label><p id="loginError" class="error" role="alert"></p><button type="submit">Ingresar</button></form></div>
+<div id="employee" class="card narrow hidden"><div class="row"><h2>Mi asistencia</h2><button class="logout no-print">Salir</button></div><div class="row"><img id="employeePhoto" class="avatar" src="logo.svg" alt=""><div><strong id="employeeName"></strong><p id="employeeSchedule"></p></div></div><p id="employeeStatus" class="notice"></p><div class="row no-print"><button id="checkIn">Marcar entrada</button><button id="checkOut">Marcar salida</button></div></div>
+<div id="admin" class="hidden"><div class="row"><h2>Panel de administrador</h2><button class="logout no-print">Salir</button></div><div class="stats"><div class="stat">Registros<b id="total">0</b></div><div class="stat">A tiempo<b id="ontime">0</b></div><div class="stat">Tardanzas<b id="late">0</b></div></div>
+<section class="card"><h2>Informes por fecha</h2><div class="filters no-print"><label>Desde<input type="date" id="from"></label><label>Hasta<input type="date" id="to"></label><label>Empleado<select id="filterUser"><option value="">Todos</option></select></label></div><div class="row no-print"><button id="exportCsv">Descargar CSV</button><button id="print">Imprimir</button></div><div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Empleado</th><th>Rol</th><th>Entrada</th><th>Salida</th><th>Tardanza</th></tr></thead><tbody id="table"></tbody></table></div></section>
+<section id="profiles" class="card mt"><h2>Fotos de perfil</h2><p>Subí una imagen JPG para cada empleado. Evitá fotografías personales reales en el proyecto académico.</p><div id="profileRows"></div></section></div>
+<p id="message" class="error" role="status"></p></div></div>
+<script src="config.js"></script><script type="module">
+import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
+const $=id=>document.getElementById(id);
+const configured=window.ASISTEPY_SUPABASE_URL?.startsWith('https://') && window.ASISTEPY_SUPABASE_KEY && !window.ASISTEPY_SUPABASE_KEY.startsWith('PEGAR_');
+const db=configured?createClient(window.ASISTEPY_SUPABASE_URL,window.ASISTEPY_SUPABASE_KEY):null;
+let mode='employee',profile=null,users=[],rows=[];
+const datePY=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Asuncion'});
+const fmtDate=s=>s.split('-').reverse().join('/');
+const fmtTime=s=>s?new Date(s).toLocaleTimeString('es-PY',{timeZone:'America/Asuncion',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
+const mins=s=>{let [h,m]=s.split(':').map(Number);return h*60+m};
+const lateMin=r=>{const u=users.find(x=>x.id===r.usuario_id);return Math.max(0,mins(fmtTime(r.entrada))-mins((u?.horario_entrada||'00:00').slice(0,5)))};
+function show(...ids){['home','app','setup','login','employee','admin'].forEach(id=>$(id).classList.add('hidden'));ids.forEach(id=>$(id).classList.remove('hidden'))}
+function message(s){$('message').textContent=s||''}
+async function start(target){mode=target;profile=null;message('');show('app',configured?'login':'setup');$('loginTitle').textContent=target==='admin'?'Panel de administrador':'Marcar asistencia';if(db)await db.auth.signOut();}
+$('goEmployee').onclick=()=>start('employee');$('goAdmin').onclick=()=>start('admin');
+$('back').onclick=async()=>{if(db)await db.auth.signOut();show('home');};
+document.querySelectorAll('.logout').forEach(b=>b.onclick=async()=>{await db.auth.signOut();show('home')});
+$('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';const {data,error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){$('loginError').textContent='No se pudo iniciar sesión. Revisá tus credenciales.';return}
+const p=await db.from('perfiles').select('*').eq('id',data.user.id).single();if(p.error||!p.data){await db.auth.signOut();$('loginError').textContent='Esta cuenta todavía no tiene un perfil. Ejecutá database.sql.';return}
+profile=p.data; $('password').value='';
+if(mode==='admin'&&profile.rol!=='Gerente'){await db.auth.signOut();$('loginError').textContent='Solo el gerente puede acceder al panel.';return}
+if(mode==='admin'){show('app','admin');await loadAdmin()}else{show('app','employee');await loadEmployee()}
+};
+async function loadEmployee(){const {data,error}=await db.from('asistencias').select('*').eq('usuario_id',profile.id).eq('fecha',datePY()).maybeSingle();if(error){message(error.message);return}const r=data;$('employeeName').textContent=profile.nombre;$('employeeSchedule').textContent=profile.rol+' · Horario '+profile.horario_entrada.slice(0,5);$('employeePhoto').src=profile.foto_url||'logo.svg';$('employeeStatus').textContent=r?'Entrada: '+fmtTime(r.entrada)+' · Salida: '+fmtTime(r.salida):'Todavía no marcaste entrada hoy.';$('checkIn').disabled=!!r;$('checkOut').disabled=!r||!!r.salida;$('checkOut').dataset.id=r?.id||'';}
+$('checkIn').onclick=async()=>{const {error}=await db.from('asistencias').insert({usuario_id:profile.id,fecha:datePY(),entrada:new Date().toISOString()});if(error)message(error.message);else{message('Entrada registrada.');await loadEmployee()}};
+$('checkOut').onclick=async()=>{const id=$('checkOut').dataset.id;if(!id)return;const {error}=await db.from('asistencias').update({salida:new Date().toISOString()}).eq('id',id).eq('usuario_id',profile.id).is('salida',null);if(error)message(error.message);else{message('Salida registrada.');await loadEmployee()}};
+async function loadAdmin(){const u=await db.from('perfiles').select('*').order('nombre');const r=await db.from('asistencias').select('*').order('fecha',{ascending:false}).limit(1000);if(u.error||r.error){message(u.error?.message||r.error?.message);return}users=u.data;rows=r.data;$('filterUser').replaceChildren(new Option('Todos',''),...users.map(x=>new Option(x.nombre,x.id)));renderAdmin();renderProfiles()}
+function filtered(){return rows.filter(r=>(!$('from').value||r.fecha>=$('from').value)&&(!$('to').value||r.fecha<=$('to').value)&&(!$('filterUser').value||r.usuario_id===$('filterUser').value))}
+function renderAdmin(){const data=filtered();$('total').textContent=data.length;$('ontime').textContent=data.filter(r=>lateMin(r)===0).length;$('late').textContent=data.filter(r=>lateMin(r)>0).length;$('table').replaceChildren();for(const r of data){const u=users.find(x=>x.id===r.usuario_id);const tr=document.createElement('tr');for(const v of [fmtDate(r.fecha),u?.nombre||'—',u?.rol||'—',fmtTime(r.entrada),fmtTime(r.salida),lateMin(r)+' min']){const td=document.createElement('td');td.textContent=v;tr.append(td)}$('table').append(tr)}}
+['from','to','filterUser'].forEach(id=>$(id).onchange=renderAdmin);
+$('exportCsv').onclick=()=>{const data=[['Fecha','Empleado','Rol','Entrada','Salida','Tardanza']];for(const r of filtered()){const u=users.find(x=>x.id===r.usuario_id);data.push([r.fecha,u?.nombre,u?.rol,fmtTime(r.entrada),fmtTime(r.salida),lateMin(r)])}const csv='\uFEFF'+data.map(a=>a.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));const a=document.createElement('a');a.href=url;a.download='informe-asistencia.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+$('print').onclick=()=>window.print();
+function renderProfiles(){$('profileRows').replaceChildren();for(const u of users){const div=document.createElement('div');div.className='profile';const img=document.createElement('img');img.className='avatar';img.src=u.foto_url||'logo.svg';const name=document.createElement('span');name.textContent=u.nombre+' ('+u.rol+')';const input=document.createElement('input');input.type='file';input.accept='image/jpeg';input.setAttribute('aria-label','Foto de '+u.nombre);input.onchange=async()=>{const file=input.files[0];if(!file)return;if(file.type!=='image/jpeg'||file.size>1024*1024){message('Usá una foto JPG de menos de 1 MB.');return}const path=u.id+'/'+Date.now()+'.jpg';const res=await db.storage.from('fotos-asistepy').upload(path,file,{contentType:'image/jpeg'});if(res.error){message(res.error.message);return}const link=db.storage.from('fotos-asistepy').getPublicUrl(path).data.publicUrl;const save=await db.from('perfiles').update({foto_url:link}).eq('id',u.id);if(save.error){message(save.error.message);return}u.foto_url=link;message('Foto actualizada.');renderProfiles()};div.append(img,name,input);$('profileRows').append(div)}}
+</script></body></html>
