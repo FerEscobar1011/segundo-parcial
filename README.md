@@ -1,43 +1,40 @@
 # AsistePY — Control de asistencia
 
-Aplicación web académica de control de asistencia, hecha únicamente con **HTML, CSS y JavaScript**. No necesita instalación, librerías externas ni base de datos.
+Aplicación web académica hecha con **HTML, CSS y JavaScript**, publicada en GitHub Pages.
+
+## Pantalla inicial
+
+Tiene dos opciones:
+1. **Marcar asistencia**: un empleado inicia sesión y registra su entrada o salida.
+2. **Panel de administrador**: el gerente consulta reportes por fecha, descarga CSV, imprime informes y carga fotos a los perfiles.
+
+## Usuarios de demostración
+
+| Usuario | Rol | Contraseña | Horario de entrada |
+| --- | --- | --- | --- |
+| cajero | Cajero | 1234 | 08:00 |
+| asistente | Asistente | 1234 | 08:30 |
+| gerente | Gerente | 1234 | 09:00 |
+
+El panel de administrador acepta únicamente el usuario `gerente`.
 
 ## Funciones
-
-- Inicio de sesión de demostración.
-- Tres roles: **cajero**, **asistente** y **gerente**.
+- Inicio con dos botones.
+- Login de demostración para empleados y gerente.
 - Registro de entrada y salida del día.
-- Cálculo de tardanzas a partir del horario asignado.
-- Informes por fechas y filtro por empleado.
-- Exportación de informes a CSV e impresión.
-- Logo y fondo de pantalla en archivos SVG.
-- El gerente consulta todos los empleados; los demás solo sus propios registros.
-- Botón para cargar datos de ejemplo (solo gerente).
+- Cálculo de tardanzas comparando la hora registrada con el horario.
+- Informes filtrados por fecha y empleado.
+- Exportación CSV e impresión de reportes.
+- Fotos de perfil cargadas por el gerente.
+- Fondo e imagen de logo en SVG.
+- Botón para cargar asistencias de ejemplo.
 
-## Usuarios de prueba
+## Sitio
 
-| Usuario | Contraseña | Horario |
-|---|---|---|
-| cajero | 1234 | 08:00 |
-| asistente | 1234 | 08:30 |
-| gerente | 1234 | 09:00 |
+https://ferescobar1011.github.io/segundo-parcial/
 
-## Cómo usar
+## Importante
 
-1. Abrí `index.html` en un navegador.
-2. Iniciá sesión con alguno de los usuarios de prueba.
-3. Usá **Registrar entrada** y **Registrar salida**.
-4. Elegí fechas para generar un informe, exportalo a CSV o imprimilo.
-5. Para probar los informes sin tener que esperar varios días, entrá como gerente y pulsá **Cargar datos de ejemplo**.
+Este proyecto es una **demostración académica**, no un sistema real de control de asistencia.
 
-## Cómo publicar con GitHub Pages
-
-1. El repositorio debe ser público para usar GitHub Pages gratis con una cuenta personal.
-2. Subí **index.html**, **logo.svg**, **fondo.svg** y **README.md** a la raíz de la rama `main`.
-3. Abrí el repositorio → **Settings → Pages**.
-4. En **Build and deployment**, elegí **Deploy from a branch** y seleccioná **main / (root)**; después **Save**.
-5. La dirección del sitio será `https://TU-USUARIO.github.io/segundo-parcial/`.
-
-## Limitaciones de esta demostración
-
-Este proyecto es un **prototipo académico**, no un sistema seguro de RR. HH. Las credenciales están incluidas en JavaScript y el control de roles solo funciona en el navegador. La información se guarda con `localStorage`: no se comparte entre navegadores, dispositivos o usuarios, y puede perderse si se borran los datos del sitio. No usar con datos personales reales ni para liquidar salarios.
+Los datos y las fotos se guardan en el `localStorage` del navegador: no se sincronizan entre computadoras, usuarios ni dispositivos. Las credenciales están en el código y no ofrecen autenticación segura, y los roles se aplican solo en el navegador. No subir fotos ni datos personales reales. Para una empresa se necesitarían un servidor, base de datos y autenticación segura.
