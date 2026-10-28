@@ -1,42 +1,35 @@
--- AsistePY: datos iniciales, reglas de seguridad y conexión desde el navegador.
--- REQUISITO: ya existen public.perfiles y public.asistencias como en el ejercicio.
--- ANTES DE EJECUTAR: crear y confirmar estas 3 cuentas en Authentication > Users:
---   cajero@asistepy.test, asistente@asistepy.test, gerente@asistepy.test
--- No insertar directamente en auth.users: usar Supabase Auth.
+-- AsistePY: LOGIN DIRECTO A TABLAS (SIN SUPABASE AUTH)
+-- PROTOTIPO ACADÉMICO: usar solo datos ficticios.
+-- Ejecutar completo en Supabase > SQL Editor > Run.
+-- Reutiliza las dos tablas existentes (perfiles y asistencias).
+-- IMPORTANTE: la clave '1234' es de PRUEBA. Los permisos anon son públicos.
 
--- 1) Poblar perfiles a partir de los UUID verdaderos de auth.users.
-INSERT INTO public.perfiles (id, nombre, rol, horario_entrada, foto_url)
-SELECT
-  id,
-  CASE email
-    WHEN 'cajero@asistepy.test' THEN 'Camila Duarte'
-    WHEN 'asistente@asistepy.test' THEN 'Tomás Rojas'
-    WHEN 'gerente@asistepy.test' THEN 'Lucía González'
-  END,
-  CASE email
-    WHEN 'cajero@asistepy.test' THEN 'Cajero'
-    WHEN 'asistente@asistepy.test' THEN 'Asistente'
-    WHEN 'gerente@asistepy.test' THEN 'Gerente'
-  END,
-  CASE email
-    WHEN 'cajero@asistepy.test' THEN time '08:00'
-    WHEN 'asistente@asistepy.test' THEN time '08:30'
-    WHEN 'gerente@asistepy.test' THEN time '09:00'
-  END,
-  NULL
-FROM auth.users
-WHERE email IN ('cajero@asistepy.test','asistente@asistepy.test','gerente@asistepy.test')
-ON CONFLICT (id) DO UPDATE
-  SET nombre = excluded.nombre,
-      rol = excluded.rol,
-      horario_entrada = excluded.horario_entrada;
+-- Eliminar el comportamiento anterior dependiente de auth.uid().
+DROP TRIGGER IF EXISTS trg_fijar_asistencia ON public.asistencias;
+DROP FUNCTION IF EXISTS public.fijar_marca_asistencia();
 
--- 2) Impedir dos asistencias del mismo empleado en la misma fecha.
+-- Permitir perfiles independientes de auth.users.
+ALTER TABLE public.perfiles DROP CONSTRAINT IF EXISTS perfiles_id_fkey;
+ALTER TABLE public.perfiles ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE public.perfiles ADD COLUMN IF NOT EXISTS usuario text;
+ALTER TABLE public.perfiles ADD COLUMN IF NOT EXISTS clave text;
+CREATE UNIQUE INDEX IF NOT EXISTS perfiles_usuario_unico ON public.perfiles (usuario);
+
+-- Crear los tres perfiles de demostración.
+INSERT INTO public.perfiles (usuario, clave, nombre, rol, horario_entrada, foto_url) VALUES
+  ('cajero',   '1234', 'Camila Duarte',   'Cajero',   '08:00', NULL),
+  ('asistente','1234', 'Tomás Rojas',    'Asistente','08:30', NULL),
+  ('gerente',  '1234', 'Lucía González',  'Gerente',  '09:00', NULL)
+ON CONFLICT (usuario) DO UPDATE
+SET clave = EXCLUDED.clave,
+    nombre = EXCLUDED.nombre,
+    rol = EXCLUDED.rol,
+    horario_entrada = EXCLUDED.horario_entrada;
+
 CREATE UNIQUE INDEX IF NOT EXISTS asistencias_usuario_fecha_unica
-ON public.asistencias (usuario_id, fecha);
+  ON public.asistencias (usuario_id, fecha);
 
--- 3) Datos de ejemplo para tres días anteriores (hora de Paraguay).
--- Se insertan antes del trigger que registra automáticamente las marcas reales.
+-- Datos de ejemplo de los tres últimos días, una sola vez por empleado y fecha.
 WITH dias AS (
   SELECT (now() AT TIME ZONE 'America/Asuncion')::date - n AS fecha, n
   FROM generate_series(1,3) AS n
@@ -44,76 +37,45 @@ WITH dias AS (
 INSERT INTO public.asistencias(usuario_id, fecha, entrada, salida)
 SELECT p.id, d.fecha,
        ((d.fecha + p.horario_entrada) AT TIME ZONE 'America/Asuncion')
-       + CASE WHEN (p.rol='Cajero' AND d.n=1)
-                  OR (p.rol='Asistente' AND d.n=2)
-                  OR (p.rol='Gerente' AND d.n=3)
-              THEN INTERVAL '12 minutes' ELSE INTERVAL '0 minutes' END,
-       ((d.fecha + p.horario_entrada) AT TIME ZONE 'America/Asuncion')
-       + INTERVAL '9 hours'
+         + CASE WHEN (p.usuario='cajero' AND d.n=1)
+                    OR (p.usuario='asistente' AND d.n=2)
+                    OR (p.usuario='gerente' AND d.n=3)
+                THEN INTERVAL '12 minutes' ELSE INTERVAL '0 minutes' END,
+       ((d.fecha + p.horario_entrada) AT TIME ZONE 'America/Asuncion') + INTERVAL '9 hours'
 FROM public.perfiles p CROSS JOIN dias d
-WHERE p.rol IN ('Cajero','Asistente','Gerente')
+WHERE p.usuario IN ('cajero','asistente','gerente')
 ON CONFLICT (usuario_id,fecha) DO NOTHING;
 
--- 4) Autorización: el gerente puede leer los perfiles y asistencias de todos.
--- Se usa una función de un esquema NO expuesto, para evitar recursión en RLS.
-CREATE SCHEMA IF NOT EXISTS private;
-CREATE OR REPLACE FUNCTION private.es_gerente()
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+-- Login directo a 'perfiles' mediante una función SQL.
+-- No expone la columna 'clave' al navegador mediante SELECT.
+-- El control real de acceso a filas NO está garantizado en esta demo pública.
+CREATE OR REPLACE FUNCTION public.login_demo(p_usuario text, p_clave text)
+RETURNS TABLE(
+  id uuid,
+  nombre varchar(100),
+  rol varchar(20),
+  horario_entrada time without time zone,
+  foto_url text
+)
+LANGUAGE sql SECURITY DEFINER
+SET search_path = ''
 AS $$
-  SELECT EXISTS(
-    SELECT 1 FROM public.perfiles
-    WHERE id = (SELECT auth.uid()) AND rol = 'Gerente'
-  );
+  SELECT p.id, p.nombre, p.rol, p.horario_entrada, p.foto_url
+  FROM public.perfiles p
+  WHERE p.usuario = p_usuario AND p.clave = p_clave
+  LIMIT 1;
 $$;
-REVOKE ALL ON FUNCTION private.es_gerente() FROM PUBLIC;
-GRANT USAGE ON SCHEMA private TO authenticated;
-GRANT EXECUTE ON FUNCTION private.es_gerente() TO authenticated;
+REVOKE ALL ON FUNCTION public.login_demo(text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.login_demo(text,text) TO anon;
 
-ALTER TABLE public.perfiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.asistencias ENABLE ROW LEVEL SECURITY;
-
-REVOKE ALL ON TABLE public.perfiles FROM anon, authenticated;
-REVOKE ALL ON TABLE public.asistencias FROM anon, authenticated;
-GRANT SELECT ON TABLE public.perfiles TO authenticated;
-GRANT UPDATE (foto_url) ON TABLE public.perfiles TO authenticated;
-GRANT SELECT, INSERT ON TABLE public.asistencias TO authenticated;
-GRANT UPDATE (salida) ON TABLE public.asistencias TO authenticated;
-
-DROP POLICY IF EXISTS perfiles_lectura ON public.perfiles;
-CREATE POLICY perfiles_lectura ON public.perfiles
-  FOR SELECT TO authenticated
-  USING (id = (SELECT auth.uid()) OR (SELECT private.es_gerente()));
-
-DROP POLICY IF EXISTS perfiles_fotos_gerente ON public.perfiles;
-CREATE POLICY perfiles_fotos_gerente ON public.perfiles
-  FOR UPDATE TO authenticated
-  USING ((SELECT private.es_gerente()))
-  WITH CHECK ((SELECT private.es_gerente()));
-
-DROP POLICY IF EXISTS asistencias_lectura ON public.asistencias;
-CREATE POLICY asistencias_lectura ON public.asistencias
-  FOR SELECT TO authenticated
-  USING (usuario_id = (SELECT auth.uid()) OR (SELECT private.es_gerente()));
-
-DROP POLICY IF EXISTS asistencias_insertar ON public.asistencias;
-CREATE POLICY asistencias_insertar ON public.asistencias
-  FOR INSERT TO authenticated
-  WITH CHECK (usuario_id = (SELECT auth.uid()));
-
-DROP POLICY IF EXISTS asistencias_salida ON public.asistencias;
-CREATE POLICY asistencias_salida ON public.asistencias
-  FOR UPDATE TO authenticated
-  USING (usuario_id = (SELECT auth.uid()) AND salida IS NULL)
-  WITH CHECK (usuario_id = (SELECT auth.uid()));
-
--- 5) La fecha y la hora real las fija PostgreSQL, no el reloj del empleado.
-CREATE OR REPLACE FUNCTION public.fijar_marca_asistencia()
-RETURNS trigger LANGUAGE plpgsql SET search_path = ''
+-- Registrar siempre fecha y hora del servidor en las marcas reales.
+CREATE OR REPLACE FUNCTION public.marca_hora_demo()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
 AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    NEW.usuario_id := auth.uid();
     NEW.fecha := (now() AT TIME ZONE 'America/Asuncion')::date;
     NEW.entrada := now();
     NEW.salida := NULL;
@@ -123,27 +85,54 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-REVOKE ALL ON FUNCTION public.fijar_marca_asistencia() FROM PUBLIC;
-DROP TRIGGER IF EXISTS trg_fijar_asistencia ON public.asistencias;
-CREATE TRIGGER trg_fijar_asistencia
+DROP TRIGGER IF EXISTS trg_marca_hora_demo ON public.asistencias;
+CREATE TRIGGER trg_marca_hora_demo
 BEFORE INSERT OR UPDATE OF salida ON public.asistencias
-FOR EACH ROW EXECUTE FUNCTION public.fijar_marca_asistencia();
+FOR EACH ROW EXECUTE FUNCTION public.marca_hora_demo();
 
--- 6) Fotos de perfil: bucket público de demostración; solo gerente puede subir.
--- No utilizar fotos personales reales en este prototipo público.
-INSERT INTO storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
-VALUES ('fotos-asistepy','fotos-asistepy',true,1048576,ARRAY['image/jpeg'])
-ON CONFLICT (id) DO UPDATE
-SET public=excluded.public,
-    file_size_limit=excluded.file_size_limit,
-    allowed_mime_types=excluded.allowed_mime_types;
+-- Quitar las políticas antiguas que requerían Supabase Auth.
+DROP POLICY IF EXISTS perfiles_lectura ON public.perfiles;
+DROP POLICY IF EXISTS perfiles_fotos_gerente ON public.perfiles;
+DROP POLICY IF EXISTS asistencias_lectura ON public.asistencias;
+DROP POLICY IF EXISTS asistencias_insertar ON public.asistencias;
+DROP POLICY IF EXISTS asistencias_salida ON public.asistencias;
 
-DROP POLICY IF EXISTS fotos_asistepy_subir_gerente ON storage.objects;
-CREATE POLICY fotos_asistepy_subir_gerente ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'fotos-asistepy' AND (SELECT private.es_gerente()));
+-- DEMO PÚBLICA: todos los visitantes comparten el rol anon.
+-- Las políticas abiertas permiten usar GitHub Pages sin Auth.
+-- No utilizar con datos o fotos personales reales.
+ALTER TABLE public.perfiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.asistencias ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.perfiles FROM anon, authenticated;
+REVOKE ALL ON TABLE public.asistencias FROM anon, authenticated;
 
--- 7) Comprobación.
-SELECT 'perfiles' AS tabla, COUNT(*) AS filas FROM public.perfiles
-UNION ALL
-SELECT 'asistencias', COUNT(*) FROM public.asistencias;
+GRANT SELECT (id, usuario, nombre, rol, horario_entrada, foto_url) ON public.perfiles TO anon;
+GRANT UPDATE (foto_url) ON public.perfiles TO anon;
+GRANT SELECT, INSERT ON public.asistencias TO anon;
+GRANT UPDATE (salida) ON public.asistencias TO anon;
+
+DROP POLICY IF EXISTS demo_perfiles_leer ON public.perfiles;
+CREATE POLICY demo_perfiles_leer ON public.perfiles FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS demo_perfiles_foto ON public.perfiles;
+CREATE POLICY demo_perfiles_foto ON public.perfiles FOR UPDATE TO anon
+  USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS demo_asistencias_leer ON public.asistencias;
+CREATE POLICY demo_asistencias_leer ON public.asistencias FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS demo_asistencias_insertar ON public.asistencias;
+CREATE POLICY demo_asistencias_insertar ON public.asistencias FOR INSERT TO anon WITH CHECK (true);
+DROP POLICY IF EXISTS demo_asistencias_salida ON public.asistencias;
+CREATE POLICY demo_asistencias_salida ON public.asistencias FOR UPDATE TO anon
+  USING (true) WITH CHECK (true);
+
+-- Resultados esperados: 3 usuarios de demo; 9 asistencias de ejemplo.
+SELECT usuario, nombre, rol, horario_entrada
+FROM public.perfiles
+WHERE usuario IN ('cajero','asistente','gerente')
+ORDER BY usuario;
+
+SELECT COUNT(*) AS asistencias_de_ejemplo
+FROM public.asistencias
+WHERE usuario_id IN (
+  SELECT id FROM public.perfiles
+  WHERE usuario IN ('cajero','asistente','gerente')
+);
